@@ -1,2 +1,2 @@
 # simple-spring
-This is a simple spring framework
+简易的SpringMVC框架，实现了IoC、AOP、MVC
