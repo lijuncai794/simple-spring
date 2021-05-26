@@ -1,2 +1,4 @@
 rootProject.name = 'simple-spring'
 include 'framework'
+include 'test'
+

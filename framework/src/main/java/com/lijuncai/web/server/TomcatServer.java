@@ -26,7 +26,7 @@ public class TomcatServer {
     public void startServer() throws LifecycleException {
         //创建tomcat，设置监听端口并启动
         tomcat = new Tomcat();
-        tomcat.setPort(8080);
+        tomcat.setPort(6677);
         tomcat.start();
 
 

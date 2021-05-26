@@ -1,6 +1,7 @@
 package com.lijuncai.beans;
 
 import com.lijuncai.aop.Aspect;
+import com.lijuncai.aop.AspectWeaver;
 import com.lijuncai.aop.ProxyHandler;
 import com.lijuncai.web.mvc.Controller;
 
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @description: 管理Bean的工厂类
@@ -18,9 +20,10 @@ public class BeanFactory {
 
     /**
      * 使用Map存储：Bean名称-->Bean实例之间的映射
-     * 考虑此映射后续扩展时可能存在并发情况，使用ConcurrentHashMap保证线程安全
      */
-    private static Map<String, Object> classToBean = new ConcurrentHashMap<>();
+    public static Map<String, Object> classToBean = new ConcurrentHashMap<>();
+
+    private static List<Class<?>> classList = new CopyOnWriteArrayList<>();
 
     /**
      * 获取Bean实例
@@ -32,27 +35,52 @@ public class BeanFactory {
         return classToBean.get(beanName);
     }
 
+
     /**
-     * 判断是否需要代理
+     * 设置Bean实例
      *
-     * @param cls 需要判断的类
-     * @return boolean:是否需要被代理
+     * @param beanName String Bean名称
+     * @param obj      Object Bean对象
      */
-    public static boolean isProxy(Class<?> cls) {
-        //判断是否标注了@Aspect注解
-        if (cls.isAnnotationPresent(Aspect.class)) {
-            return true;
-        }
-        return false;
+    public static void setBean(String beanName, Object obj) {
+        classToBean.put(beanName, obj);
     }
 
     /**
-     * 此方法用于初始化Bean
+     * 获取标注了@Aspect注解的类
+     */
+    public static List<Class<?>> getClassesOfAspect() {
+        List<Class<?>> classes = new ArrayList<>();
+        for (Class<?> cls : classList) {
+            if (cls.isAnnotationPresent(Aspect.class)) {
+                classes.add(cls);
+            }
+        }
+        return classes;
+    }
+
+    /**
+     * 设置类列表
      *
-     * @param classList 类列表
+     * @param classList List<Class<?>> 类列表
+     */
+    public static void setClassList(List<Class<?>> classList) {
+        BeanFactory.classList = classList;
+    }
+
+    /**
+     * 获取类列表
+     */
+    public static List<Class<?>> getClassList() {
+        return classList;
+    }
+
+    /**
+     * 初始化Bean
+     *
      * @throws Exception 循环依赖异常
      */
-    public static void initBean(List<Class<?>> classList) throws Exception {
+    public static void initBean() throws Exception {
         List<Class<?>> toCreate = new ArrayList<>(classList);
 
         //只要还存在未创建Bean实例的类，就继续做初始化
@@ -90,22 +118,13 @@ public class BeanFactory {
             return true;
         }
 
-        //执行Bean的初始化，要判断是创建普通对象还是代理对象
-        Object bean = null;
-        boolean needProxy = isProxy(cls);
-        if (needProxy) {
-            System.out.println(cls.getName() + ":need Proxy=======================");
-            Object base = cls.newInstance();
-
-            //获取其代理对象
-            bean = new ProxyHandler().getProxy(base);
-        } else {
-            bean = cls.newInstance();
-        }
+        //执行Bean的初始化
+        Object bean = cls.newInstance();
 
         //解决依赖问题:获取类的属性,若其被@AutoWired注解,则需要依赖注入
         for (Field field : cls.getDeclaredFields()) {
             if (field.isAnnotationPresent(AutoWired.class)) {
+//                System.out.println("需要注入...");
                 //通过字段类型,从Bean工厂内获取需要依赖的Bean
                 Class<?> filedType = field.getType();
                 Object reliantBean = BeanFactory.getBean(filedType.getName());
@@ -118,7 +137,7 @@ public class BeanFactory {
                 /**
                  * 如果需要依赖的Bean存在,则将其注入到当前创建的Bean中
                  * 首先修改字段(属性)的可接触性为True,作用是可以取消该字段的访问修饰符
-                 * 再将bean注入到响应的字段(属性)
+                 * 再将bean注入到相应的字段(属性)
                  */
                 field.setAccessible(true);
                 field.set(bean, reliantBean);
@@ -127,14 +146,8 @@ public class BeanFactory {
 
         /**
          * 注入完成后,建立Bean类型-->Bean实例之间的映射
-         * 如果此类不需要动态代理,则往BeanFactory中添加[Bean名称-->Bean实例]
-         * 如果此类需要动态代理,则往BeanFactory中添加[Bean名称-->代理后的Bean实例]
          */
-        if (needProxy) {
-            classToBean.put(cls.getInterfaces()[0].getName(), bean);
-        } else {
-            classToBean.put(cls.getName(), bean);
-        }
+        classToBean.put(cls.getName(), bean);
         return true;
     }
 }

@@ -27,7 +27,7 @@ public class ClassScanner {
         List<Class<?>> classList = new ArrayList<>();
         /**
          * 将包名转换为路径
-         * 获取默认的类加载器
+         * 获取默认的系统类加载器
          * 获取包名路径下的资源
          */
         String path = packageName.replace(".", "/");
