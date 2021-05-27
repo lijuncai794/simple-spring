@@ -31,8 +31,10 @@ public class MyApplication {
             BeanFactory.setClassList(classList);
             //在框架入口使用BeanFactory的initBean()初始化Bean
             BeanFactory.initBean();
-            //创建动态代理对象
+            //为需要代理的Bean创建代理对象
             new AspectWeaver().doAop();
+            //刷新依赖
+            BeanFactory.freshDependence();
             //在框架入口使用HandlerManager初始化所有的MappingHandler
             HandlerManager.resolveMappingHandler(classList);
 

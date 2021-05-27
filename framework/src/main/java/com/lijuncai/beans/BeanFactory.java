@@ -150,4 +150,25 @@ public class BeanFactory {
         classToBean.put(cls.getName(), bean);
         return true;
     }
+
+    /**
+     * 动态代理之后,刷新Bean的依赖
+     */
+    public static void freshDependence() throws IllegalAccessException {
+        for (Map.Entry<String, Object> entry : classToBean.entrySet()) {
+            Object bean = entry.getValue();
+            Class<?> clazz = bean.getClass();
+
+            //对于注入过的属性进行重新注入,注入新的动态代理之后的对象
+            for (Field field : clazz.getDeclaredFields()) {
+                if (field.isAnnotationPresent(AutoWired.class)) {
+                    Class<?> filedType = field.getType();
+                    Object reliantBean = BeanFactory.getBean(filedType.getName());
+
+                    field.setAccessible(true);
+                    field.set(bean, reliantBean);
+                }
+            }
+        }
+    }
 }
