@@ -21,7 +21,7 @@ public class BeanFactory {
     /**
      * 使用Map存储：Bean名称-->Bean实例之间的映射
      */
-    public static Map<String, Object> classToBean = new ConcurrentHashMap<>();
+    private static Map<String, Object> classToBean = new ConcurrentHashMap<>();
 
     private static List<Class<?>> classList = new CopyOnWriteArrayList<>();
 
